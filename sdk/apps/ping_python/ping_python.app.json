@@ -1,0 +1,57 @@
+{
+  "name": "ping_python",
+  "modules":["sight","navigation"],
+  "graph": {
+    "nodes": [
+      {
+        "name": "ping_node",
+        "components": [
+          {
+          "name": "MessageLedger",
+          "type": "isaac::alice::MessageLedger"
+          },
+          {
+            "name": "isaac.navigation.DifferentialBaseOdometry",
+            "type": "isaac::navigation::DifferentialBaseOdometry"
+          }
+        ]
+      },
+      {
+        "name": "odometry",
+        "components": [
+          {
+            "name": "message_ledger",
+            "type": "isaac::alice::MessageLedger"
+          },
+          {
+            "name": "isaac.navigation.DifferentialBaseOdometry",
+            "type": "isaac::navigation::DifferentialBaseOdometry"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "odometry/isaac.navigation.DifferentialBaseOdometry/state",
+        "target": "ping_node/isaac.navigation.DifferentialBaseOdometry/state"
+      }
+    ]
+  },
+  "config": {
+    "ping_node": {
+      "PyCodelet": {
+        "message": "Hello Word!"
+      }
+    },
+    "odometry": {
+      "isaac.navigation.DifferentialBaseOdometry": {
+        "tick_period": "1Hz"
+      }
+    },
+    "ping_node": {
+      "isaac.navigation.DifferentialBaseOdometry": {
+        "tick_period": "1Hz"
+      }
+    }
+  }
+}
