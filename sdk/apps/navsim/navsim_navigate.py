@@ -9,11 +9,15 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 '''
 from isaac import Application
 import argparse
-
+from marvelmind import MarvelmindHedge
+from time import sleep
+import sys
 import csv
 from isaac import *
 class PingPython(Codelet):
     def start(self):
+        self.hedge = MarvelmindHedge(tty = "/dev/ttyACM0", adr=None, debug=False)
+        self.hedge.start()
         self.rx = self.isaac_proto_rx("Plan2Proto", "imu")
         self.rx1 = self.isaac_proto_rx("Odometry2Proto", "feedback")
         self.tx = self.isaac_proto_tx("Odometry2Proto", "odometry")
@@ -22,9 +26,12 @@ class PingPython(Codelet):
         #    writer = csv.writer(file)
         #    writer.writerow(["real_x", "real_y", "odom_x", "odom_y", "gps_x", "gps_y"])
 
+    def __del__(self):
+        print('-----connection destroyed-----')
+        self.hedge.stop()
+
     def tick(self):
-        plan_pos_x = False
-        odom_x = False
+
         if self.rx.message:
             rx_message = self.rx.message
             received = rx_message.proto
@@ -33,21 +40,39 @@ class PingPython(Codelet):
             plan_pos_y = states.positionY
             #print('plan pos x= ', plan_pos_x)
         if self.rx1.message:
+
+
             rx_message1 = self.rx1.message
             received1 = rx_message1.proto
-            odom_x = received1.odomTRobot.translation.x #+ 0.5
+            odom_x = received1.odomTRobot.translation.x
             odom_y = received1.odomTRobot.translation.y
             #print("-----received-----")
-            print(received1)
+            #print(received1)
             #print('x = ', odom_x)
             #print('y = ', odom_y)
-            print("----------")
+            #print("----------")
             tx_message = self.tx.init()
             send_message = tx_message.proto
             send_message.odomTRobot
             send_message.odomTRobot.translation
-            send_message.odomTRobot.translation.x = odom_x #- 2
-            send_message.odomTRobot.translation.y = odom_y -1
+
+
+
+            self.hedge.dataEvent.wait(1)
+            self.hedge.dataEvent.clear()
+
+            if (self.hedge.positionUpdated):
+                hedge_x = self.hedge.position()[1]
+                hedge_y = self.hedge.position()[2]
+                print('x: ', hedge_x)
+                print('y: ', hedge_y)
+            else:
+                print('no data')
+                return
+
+
+            send_message.odomTRobot.translation.x = hedge_x#odom_x
+            send_message.odomTRobot.translation.y = hedge_y#odom_y
 
             send_message.odomTRobot.rotation
             send_message.odomTRobot.rotation.q
@@ -67,9 +92,9 @@ class PingPython(Codelet):
             send_message.odometryFrame = received1.odometryFrame
 
             send_message.robotFrame = received1.robotFrame
-
-            self.tx.publish()
-            print('send_to', send_message)
+            if hedge_x:
+                self.tx.publish()
+            #print('send_to', send_message)
         #import random
         #if (plan_pos_x and odom_x):
         #    with open('/home/ivan/Desktop/data.csv', 'a', newline='') as file:
